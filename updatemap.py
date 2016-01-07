@@ -1,6 +1,10 @@
 from subprocess import check_output
 from geoip import geolite2
 from pymongo import MongoClient
+from time import sleep
+import ipfsApi
+
+ipfs = ipfsApi.Client('127.0.0.1', 5001)
 
 client = MongoClient()
 
@@ -9,12 +13,19 @@ db = client["nodemap"]["ips"]
 for line in check_output("ipfs diag net", shell=True).split("\n"):
   if line.strip().startswith("ID"):
     peerid = line.strip().split(" ")[1]
-    output = check_output("ipfs dht findpeer %s" % peerid, shell=True)
-    for ip in output.split("\n"):
-      if ip.strip().startswith("/"):
-        data = {"ip":ip.split("/")[2]}
-        db.replace_one(data, data, upsert=True)
-
+    if peerid:
+      print("PEERID: ",peerid)
+      try:
+        output = ipfs.dht_findpeer(peerid, timeout=1)
+        
+        for ip in output.split("\n"):
+          if ip.strip().startswith("/"):
+            data = {"ip":ip.split("/")[2]}
+            print(data)
+            db.replace_one(data, data, upsert=True)
+      except:
+        pass
+        
 ips = map(lambda x:x["ip"], db.find({}))
 
 s = ""
@@ -36,6 +47,6 @@ html = html.replace("REPLACEME", s)
 with open("index.html", "w+") as f:
   f.write(html)
 
-hsh = check_output("ipfs add index.html", shell=True).split(" ")[1]
+hsh = ipfs.add("index.html")["Hash"]
 print(hsh)
-check_output("ipfs name publish %s" % hsh, shell=True)
+ipfs.name_publish(hsh)

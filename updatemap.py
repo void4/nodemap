@@ -3,10 +3,9 @@ from geoip import geolite2
 from pymongo import MongoClient
 import ipfsApi
 
-ipfs = ipfsApi.Client('127.0.0.1', 5001)
+ipfs = ipfsApi.Client()
 
 client = MongoClient()
-
 db = client["nodemap"]["ips"]
 
 for line in check_output("ipfs diag net", shell=True).split("\n"):
@@ -19,16 +18,16 @@ for line in check_output("ipfs diag net", shell=True).split("\n"):
         
         for ip in output.split("\n"):
           if ip.strip().startswith("/"):
-            data = {"ip":ip.split("/")[2]}
+            data = {"ip":ip.split("/")[2].strip()}
             db.replace_one(data, data, upsert=True)
       except:
         pass
         
-ips = map(lambda x:x["ip"], db.find({}))
+ips = [x["ip"] for x in db.find({})]
 
 s = ""
 for ip in ips:
-  match = geolite2.lookup(ip.strip())
+  match = geolite2.lookup(ip)
   if match:
     try:
       s += "[%f,%f]," % match.location

@@ -1,7 +1,6 @@
 from subprocess import check_output
 from geoip import geolite2
 from pymongo import MongoClient
-from time import sleep
 import ipfsApi
 
 ipfs = ipfsApi.Client('127.0.0.1', 5001)
@@ -11,12 +10,12 @@ client = MongoClient()
 db = client["nodemap"]["ips"]
 
 for line in check_output("ipfs diag net", shell=True).split("\n"):
-  line =  line.strip()
+  line = line.strip()
   if line.startswith("ID"):
     peerid = line.split(" ")[1]
     if peerid:
       try:
-        output = ipfs.dht_findpeer(peerid, timeout=1)
+        output = ipfs.dht_findpeer(peerid, timeout=5)
         
         for ip in output.split("\n"):
           if ip.strip().startswith("/"):
